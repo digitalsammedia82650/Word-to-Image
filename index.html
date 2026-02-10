@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Note-to-Image Studio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Inter:wght@300;400;700&family=Lobster&family=Playfair+Display:ital,wght@0,700;1,700&family=Space+Mono&family=Fira+Code&display=swap" rel="stylesheet">
+
+    <!-- Export Library -->
+    <script src="https://unpkg.com/dom-to-image-more@2.9.5/dist/dom-to-image-more.min.js"></script>
+
+    <style>
+        :root {
+            --accent: #0078d4; /* Word Blue */
+            --bg: #f3f2f1;
+            --toolbar: #ffffff;
+            --sidebar: #faf9f8;
+            --shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: #323130;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Top Bar / Toolbar --- */
+        .top-nav {
+            background: #0078d4;
+            color: white;
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .main-toolbar {
+            background: var(--toolbar);
+            padding: 10px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid #edebe9;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 4px;
+            padding: 0 10px;
+            border-right: 1px solid #edebe9;
+        }
+
+        .btn {
+            background: white;
+            border: 1px solid #8a8886;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn:hover { background: #f3f2f1; border-color: var(--accent); }
+        .btn.active { background: #deecf9; border-color: var(--accent); }
+
+        select {
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #8a8886;
+        }
+
+        /* --- Layout --- */
+        .workspace {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        /* --- Sidebar Panels --- */
+        .side-panel {
+            background: var(--sidebar);
+            padding: 20px;
+            border: 1px solid #edebe9;
+            overflow-y: auto;
+        }
+
+        .side-panel h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #605e5c;
+            margin-top: 0;
+            border-bottom: 2px solid #0078d4;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+
+        /* --- Center Canvas (The "Paper") --- */
+        .canvas-area {
+            padding: 40px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #paper {
+            width: 90%;
+            max-width: 800px;
+            min-height: 500px;
+            background: white;
+            box-shadow: var(--shadow);
+            padding: 60px;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        /* --- WordArt CSS Engines --- */
+        .wa-neon {
+            color: #fff !important;
+            text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #ff00de, 0 0 30px #ff00de !important;
+        }
+
+        .wa-retro {
+            color: #ffbe0b !important;
+            text-shadow: 3px 3px 0px #fb5607, 6px 6px 0px #ff006e !important;
+            font-weight: 900 !important;
+        }
+
+        .wa-outline {
+            color: transparent !important;
+            -webkit-text-stroke: 1px #323130;
+        }
+
+        .wa-gradient {
+            background: linear-gradient(to right, #12c2e9, #c471ed, #f64f59);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+
+        .wa-3d {
+            color: white !important;
+            text-shadow: 0 1px 0 #ccc, 0 2px 0 #c9c9c9, 0 3px 0 #bbb, 0 4px 0 #b9b9b9, 0 5px 0 #aaa, 0 6px 1px rgba(0,0,0,.1), 0 0 5px rgba(0,0,0,.1), 0 1px 3px rgba(0,0,0,.3), 0 3px 5px rgba(0,0,0,.2), 0 5px 10px rgba(0,0,0,.25), 0 10px 10px rgba(0,0,0,.2), 0 20px 20px rgba(0,0,0,.15) !important;
+        }
+
+        /* --- Utility --- */
+        .export-btn {
+            background: #107c10;
+            color: white;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .preset-card {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+
+        .preset-card:hover { border-color: #0078d4; background: #f0f7ff; }
+
+    </style>
+</head>
+<body>
+
+<div class="top-nav">
+    <div>Note-to-Image Studio</div>
+    <div id="statusIndicator" style="font-weight: normal; font-size: 12px;">Editing Mode</div>
+</div>
+
+<!-- Main Toolbar -->
+<div class="main-toolbar">
+    <div class="toolbar-group">
+        <select id="fontName" onchange="format('fontName', this.value)">
+            <option value="Inter">Standard</option>
+            <option value="Playfair Display">Serif (Elegant)</option>
+            <option value="Space Mono">Modern (Mono)</option>
+            <option value="Bungee">Blocky</option>
+            <option value="Lobster">Script</option>
+            <option value="Fira Code">Coding</option>
+        </select>
+        <select onchange="format('fontSize', this.value)">
+            <option value="3">Small</option>
+            <option value="4" selected>Medium</option>
+            <option value="5">Large</option>
+            <option value="6">Extra Large</option>
+            <option value="7">Heading</option>
+        </select>
+    </div>
+
+    <div class="toolbar-group">
+        <button class="btn" onclick="format('bold')"><b>B</b></button>
+        <button class="btn" onclick="format('italic')"><i>I</i></button>
+        <button class="btn" onclick="format('underline')"><u>U</u></button>
+        <input type="color" onchange="format('foreColor', this.value)" style="width:30px; height:30px; border:none; padding:0; cursor:pointer;">
+    </div>
+
+    <div class="toolbar-group">
+        <button class="btn" onclick="format('justifyLeft')">Left</button>
+        <button class="btn" onclick="format('justifyCenter')">Center</button>
+        <button class="btn" onclick="format('justifyRight')">Right</button>
+    </div>
+
+    <div class="toolbar-group" style="border:none">
+        <button class="btn" onclick="format('insertUnorderedList')">• List</button>
+    </div>
+</div>
+
+<main class="workspace">
+    
+    <!-- Left Panel: Canvas Styles -->
+    <aside class="side-panel">
+        <h3>Page Layout</h3>
+        <label style="font-size:12px">Canvas Background</label>
+        <input type="color" id="bgColor" value="#ffffff" onchange="updateCanvas()" style="width:100%; height:40px; margin-bottom:15px;">
+        
+        <label style="font-size:12px">Page Width</label>
+        <input type="range" min="400" max="1000" value="800" oninput="updateCanvas()" id="pageWidth" style="width:100%">
+
+        <label style="font-size:12px; margin-top:15px; display:block;">Border Radius</label>
+        <input type="range" min="0" max="50" value="0" oninput="updateCanvas()" id="pageRadius" style="width:100%">
+
+        <h3 style="margin-top:30px">Note Metadata</h3>
+        <input type="text" placeholder="Add a Footer (e.g. @username)" id="footerText" oninput="updateFooter()" style="width:100%; padding:8px; box-sizing:border-box;">
+    </aside>
+
+    <!-- Center Panel: The Editor -->
+    <section class="canvas-area">
+        <div id="paper" contenteditable="true" spellcheck="false">
+            <h1>Discussion Notes</h1>
+            <p>Paste your <b>Word Document</b> text here. Highlighting any text allows you to apply the WordArt presets on the right sidebar!</p>
+            <ul>
+                <li>Clean, shareable images for peers</li>
+                <li>Professional Typography</li>
+                <li>WordArt Effects</li>
+            </ul>
+        </div>
+        <div id="canvasFooter" style="margin-top: 15px; opacity: 0.5; font-size: 14px;"></div>
+    </section>
+
+    <!-- Right Panel: WordArt Presets -->
+    <aside class="side-panel">
+        <h3>WordArt Presets</h3>
+        <p style="font-size:11px; color:#666">Highlight text first, then click:</p>
+        <div class="preset-grid">
+            <div class="preset-card wa-neon" onclick="applyWordArt('wa-neon')">Neon Glow</div>
+            <div class="preset-card wa-retro" onclick="applyWordArt('wa-retro')">Retro 3D</div>
+            <div class="preset-card" style="font-weight:bold; color:transparent; -webkit-text-stroke:1px black" onclick="applyWordArt('wa-outline')">Outline</div>
+            <div class="preset-card" style="background:linear-gradient(to right, blue, red); -webkit-background-clip:text; color:transparent;" onclick="applyWordArt('wa-gradient')">Gradient</div>
+            <div class="preset-card wa-3d" style="background:#444" onclick="applyWordArt('wa-3d')">White 3D</div>
+            <div class="preset-card" style="text-decoration: underline" onclick="format('removeFormat')">Clear Style</div>
+        </div>
+
+        <h3 style="margin-top:40px">Export Final</h3>
+        <button class="export-btn" onclick="exportImage('png')">Download Image (PNG)</button>
+        <button class="export-btn" style="background:#0078d4" onclick="copyToClipboard()">Copy to Clipboard</button>
+        <p style="font-size:10px; text-align:center; margin-top:10px;">High-resolution export for Teams/Slack/Email.</p>
+    </aside>
+</main>
+
+<script>
+    // --- Rich Text Manipulation ---
+    function format(cmd, value = null) {
+        document.execCommand(cmd, false, value);
+        document.getElementById('paper').focus();
+    }
+
+    // --- Apply WordArt to Selection ---
+    function applyWordArt(className) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount || selection.isCollapsed) {
+            alert("Please highlight some text first!");
+            return;
+        }
+
+        // Wrap selection in a span with the WordArt class
+        const span = document.createElement("span");
+        span.className = className;
+        
+        try {
+            const range = selection.getRangeAt(0);
+            range.surroundContents(span);
+        } catch (e) {
+            // Fallback for complex selections
+            document.execCommand('insertHTML', false, `<span class="${className}">${selection.toString()}</span>`);
+        }
+    }
+
+    // --- Canvas Controls ---
+    function updateCanvas() {
+        const paper = document.getElementById('paper');
+        paper.style.backgroundColor = document.getElementById('bgColor').value;
+        paper.style.width = document.getElementById('pageWidth').value + "px";
+        paper.style.borderRadius = document.getElementById('pageRadius').value + "px";
+        
+        // Auto-contrast check
+        const hex = document.getElementById('bgColor').value;
+        const r = parseInt(hex.slice(1,3), 16);
+        const g = parseInt(hex.slice(3,5), 16);
+        const b = parseInt(hex.slice(5,7), 16);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        paper.style.color = brightness > 128 ? '#323130' : '#ffffff';
+    }
+
+    function updateFooter() {
+        document.getElementById('canvasFooter').innerText = document.getElementById('footerText').value;
+    }
+
+    // --- Export Functions ---
+    function exportImage(format) {
+        const node = document.getElementById('paper');
+        toggleStatus("Rendering Image...");
+        
+        domtoimage.toBlob(node, { 
+            scale: 3, // High quality
+            style: { margin: '0' }
+        })
+        .then(blob => {
+            const link = document.createElement('a');
+            link.download = `NoteExport-${Date.now()}.${format}`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            toggleStatus("Saved!");
+        });
+    }
+
+    async function copyToClipboard() {
+        toggleStatus("Copying...");
+        const node = document.getElementById('paper');
+        const blob = await domtoimage.toBlob(node, { scale: 2 });
+        try {
+            await navigator.clipboard.write([
+                new ClipboardItem({ "image/png": blob })
+            ]);
+            toggleStatus("Copied to Clipboard!");
+        } catch (err) {
+            alert("Clipboard copy failed. Try downloading the PNG.");
+        }
+    }
+
+    function toggleStatus(msg) {
+        const s = document.getElementById('statusIndicator');
+        s.innerText = msg;
+        setTimeout(() => s.innerText = "Editing Mode", 2000);
+    }
+
+    // Initialize
+    window.onload = () => {
+        document.getElementById('paper').focus();
+    };
+</script>
+
+</body>
+</html>
